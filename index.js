@@ -13,13 +13,17 @@ class WordPressSource {
       apiBase: 'wp-json',
       perPage: 100,
       concurrent: 10,
-      typeName: 'WordPress'
+      typeName: 'WordPress',
+      lang: 'fr',
+      endpointName: "wp/v2"
     }
   }
 
   constructor (api, options) {
     this.options = options
-    this.restBases = { posts: {}, taxonomies: {}}
+    this.restBases = { posts: {}, taxonomies: {} }
+    this.routeParams = "?lang="+options.lang;
+    
 
     if (!options.typeName) {
       throw new Error(`Missing typeName option.`)
@@ -42,7 +46,7 @@ class WordPressSource {
     api.loadSource(async actions => {
       this.store = actions
 
-      console.log(`Loading data from ${baseUrl}`)
+      console.log(`Loading data from ${baseUrl} in ${options.lang}`)
 
       await this.getPostTypes(actions)
       await this.getUsers(actions)
@@ -53,7 +57,7 @@ class WordPressSource {
   }
 
   async getPostTypes (actions) {
-    const { data } = await this.fetch('wp/v2/types', {}, {})
+    const { data } = await this.fetch(this.options.endpointName+'/types'+this.routeParams, {}, {})
     const addCollection = actions.addCollection || actions.addContentType
 
     for (const type in data) {
@@ -69,7 +73,7 @@ class WordPressSource {
   }
 
   async getUsers (actions) {
-    const { data } = await this.fetch('wp/v2/users')
+    const { data } = await this.fetch(this.options.endpointName+'/users'+this.routeParams)
     const addCollection = actions.addCollection || actions.addContentType
 
     const authors = addCollection({
@@ -91,7 +95,7 @@ class WordPressSource {
   }
 
   async getTaxonomies (actions) {
-    const { data } = await this.fetch('wp/v2/taxonomies', {}, {})
+    const { data } = await this.fetch(this.options.endpointName+'/taxonomies'+this.routeParams, {}, {})
     const addCollection = actions.addCollection || actions.addContentType
 
     for (const type in data) {
@@ -103,7 +107,7 @@ class WordPressSource {
 
       this.restBases.taxonomies[type] = trimStart(options.rest_base, '/')
 
-      const terms = await this.fetchPaged(`wp/v2/${options.rest_base}`)
+      const terms = await this.fetchPaged(`${this.options.endpointName}/${options.rest_base}${this.routeParams}`)
 
       for (const term of terms) {
         taxonomy.addNode({
@@ -130,7 +134,7 @@ class WordPressSource {
       const typeName = this.createTypeName(type)
       const posts = getCollection(typeName)
 
-      const data = await this.fetchPaged(`wp/v2/${restBase}`)
+      const data = await this.fetchPaged(`${this.options.endpointName}/${restBase}${this.routeParams}`)
 
       for (const post of data) {
         const fields = this.normalizeFields(post)
